@@ -1,0 +1,9 @@
+[package]
+name = "distributed_inspec_notifier"
+version = "0.1.0"
+authors = ["Lance Finfrock <lancewf@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix = "0.8"
+actix-web = "1.0.0-beta"
