@@ -2,4 +2,4 @@
 
 exec 2>&1
 
-exec distributed_inspec_notifier
+exec distributed_inspec_notifier "{{cfg.service.host}}:{{cfg.service.port}}"
