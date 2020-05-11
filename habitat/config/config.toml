@@ -1,0 +1,25 @@
+[service]
+{{~#if cfg.service.host}}
+host = "{{cfg.service.host}}"
+{{~else}}
+host = "{{sys.ip}}"
+{{~/if}}
+port = {{cfg.service.port}}
+config = "{{pkg.svc_data_path}}/.notifications-service.toml"
+
+[webhook]
+url = "{{cfg.webhook.url}}"
+
+[ifttt_webhook]
+url = "{{cfg.ifttt_webhook.url}}"
+
+[slack_webhook]
+url = "{{cfg.slack_webhook.url}}"
+
+[inspec]
+min_impact_to_notify = {{cfg.inspec.min_impact_to_notify}}
+
+[automate]
+enable_forwarding = {{cfg.automate.enable_forwarding}}
+url = "{{cfg.automate.url}}"
+token = "{{cfg.automate.token}}"
