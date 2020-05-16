@@ -1,3 +1,6 @@
+#!/bin/bash
+#
+
 hab pkg install chef/studio-common >/dev/null
 source "$(hab pkg path chef/studio-common)/bin/studio-common"
 
@@ -19,6 +22,40 @@ function rebuild() {
   hab svc unload $HAB_ORIGIN/$SERVICE_NAME
   sleep 3
   hab svc load $HAB_ORIGIN/$SERVICE_NAME
+}
+
+document "rbuild" <<DOC
+  Builds and reloads the binary from the '/src/target/debug' directory.
+
+  This is faster than the "rebuild" command, but does not update any habitat changes
+DOC
+function rbuild() {
+  hab svc unload $HAB_ORIGIN/$SERVICE_NAME
+  sleep 1
+
+  hab pkg install -b core/rust
+  hab pkg install -b core/gcc
+  hab pkg install -b core/gcc-libs/9.1.0/20200305225533
+  hab pkg install -b core/glibc
+  hab pkg install -b core/pkg-config
+  hab pkg install -b core/make
+
+  LD_LIBRARY_PATH="$(hab pkg path core/gcc-libs)/lib/" cargo build
+
+  cp /src/target/debug/$SERVICE_NAME $(hab pkg path $HAB_ORIGIN/$SERVICE_NAME)/bin/
+
+  hab svc load $HAB_ORIGIN/$SERVICE_NAME
+}
+
+document "kill_running_service" <<DOC
+  This kills the running service. Where hab sup should restart. 
+DOC
+function kill_running_service() {
+  install_if_missing core/busybox-static pgrep >/dev/null
+  SERVICE_PID=$(pgrep $SERVICE_NAME)
+  if [[ -n ${SERVICE_PID} ]]; then
+    kill $SERVICE_PID
+  fi
 }
 
 function status() {

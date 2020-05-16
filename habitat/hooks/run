@@ -2,4 +2,5 @@
 
 exec 2>&1
 
+export LD_LIBRARY_PATH="$(hab pkg path core/gcc-libs)/lib/"
 exec distributed_inspec_notifier {{pkg.svc_config_path}}/config.toml

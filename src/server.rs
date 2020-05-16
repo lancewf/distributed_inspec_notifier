@@ -20,6 +20,6 @@ pub mod service {
   }
 
   fn index(_req: HttpRequest) -> HttpResponse  {
-    HttpResponse::Ok().json("Hello world!")
+    HttpResponse::Ok().json("Hello rustacean!")
   }
 }
