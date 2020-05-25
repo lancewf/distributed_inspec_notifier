@@ -1,25 +1,25 @@
 pub mod service {
-  extern crate actix_web;
-  use actix_web::{HttpServer, App, web, HttpRequest, HttpResponse};
+  use warp::Filter;
   pub use crate::config::conf;
+  use std::net::ToSocketAddrs;
 
-  pub fn start(config: conf::Config) {
+  #[tokio::main]
+  pub async fn start(config: conf::Config) {
 
     let address = format!("{}:{}", config.service.host, config.service.port);
 
     println!("listening on address {}", address);
 
-    match HttpServer::new(|| App::new().service(
-      web::resource("/").route(web::get().to_async(index))))
-      .bind(address)
-      .unwrap()
-      .run() {
-          Ok(()) => println!("called !"),
-          Err(e) => println!(" error {}", e),
-      };
-  }
+    let root = warp::any()
+      .map(|| format!("Hello rustacean!"));
 
-  fn index(_req: HttpRequest) -> HttpResponse  {
-    HttpResponse::Ok().json("Hello rustacean!")
+    let mut addr_itr = address.to_socket_addrs()
+      .expect("host and port were not correct");
+
+    if let Some(socket_addr) = addr_itr.next() {
+      warp::serve(root)
+          .run(socket_addr)
+          .await;
+    }
   }
 }
