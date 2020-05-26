@@ -1,7 +1,8 @@
 use std::env;
 mod server;
-pub use crate::server::service;
 mod config;
+mod model;
+pub use crate::server::service;
 pub use crate::config::conf;
 
 fn main() {

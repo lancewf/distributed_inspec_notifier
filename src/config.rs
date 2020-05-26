@@ -6,12 +6,18 @@ pub mod conf {
   #[derive(Deserialize)]
   pub struct Config {
     pub service: Service,
+    pub webhook: Webhook,
   }
 
   #[derive(Deserialize)]
   pub struct Service {
     pub host: String,
     pub port: u16,
+  }
+
+  #[derive(Deserialize)]
+  pub struct Webhook {
+    pub url: String,
   }
 
   pub fn get_config(file_path: &String) -> Config {

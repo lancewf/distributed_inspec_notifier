@@ -15,6 +15,8 @@ export PORT=8080
 function start() {
   build
 
+  create_config
+
   hab svc load $HAB_ORIGIN/$SERVICE_NAME
 }
 
@@ -25,11 +27,11 @@ function rebuild() {
   hab svc load $HAB_ORIGIN/$SERVICE_NAME
 }
 
-function send_success_example() {
+function send_report() {
   install_if_missing core/curl curl
   install_if_missing core/jq-static jq
 
-  local examples_json_path="/src/examples/compliance-success-tiny-report.json"
+  local examples_json_path=$1
   local endpoint="http://localhost:$PORT/data-collector/v0/"
   local uuid=$(uuidgen)
   local entity_uuid=$(uuidgen)
@@ -38,6 +40,16 @@ function send_success_example() {
   tmp_report_json="$(jq --arg date "$date" --arg id "$uuid" --arg nodeid "$entity_uuid" '.report_uuid = $id | .node_uuid = $nodeid | .end_time = $date' <$examples_json_path)"
 
   echo "$tmp_report_json" | curl --data "@-" $endpoint
+}
+
+function send_success_example() {
+
+  send_report "/src/examples/compliance-success-tiny-report.json"
+}
+
+function send_failure_example() {
+
+  send_report "/src/examples/compliance-failure-big-report.json"
 }
 
 document "rbuild" <<DOC
@@ -72,6 +84,12 @@ function kill_running_service() {
   if [[ -n ${SERVICE_PID} ]]; then
     kill $SERVICE_PID
   fi
+}
+
+function create_config() {
+  mkdir -p /hab/user/distributed_inspec_notifier/config/
+  printf "[service]\n host = \"localhost\"\n port = \"$PORT\"\n\n" > /hab/user/distributed_inspec_notifier/config/user.toml
+  printf "[webhook]\n url = \"http://requestbin.sjcmmsn.com/1nypmdf1\"\n" >> /hab/user/distributed_inspec_notifier/config/user.toml
 }
 
 function status() {
