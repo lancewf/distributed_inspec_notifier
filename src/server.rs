@@ -5,8 +5,7 @@ pub mod service {
 
   use std::net::ToSocketAddrs;
   use std::convert::Infallible;
-  use hyper::{body::HttpBody as _, Client};
-  use tokio::io::{self, AsyncWriteExt as _};
+  use hyper::{Client, Request, Body};
 
   #[derive(Debug)]
   struct NotUtf8;
@@ -53,7 +52,7 @@ pub mod service {
 
       let report = model::Report::from_str(body);
       if report.has_notification_to_send() && config.webhook.url != "" {
-        println!("send message to {}", config.webhook.url);
+        println!("sending message to {}", config.webhook.url);
         return match send(config).await {
           Ok(()) => Ok("ok"),
           Err(_) => Ok("error sending notification"),
@@ -63,7 +62,6 @@ pub mod service {
   }
 
   async fn send(config: std::sync::Arc<conf::Config>) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
-
     // HTTPS requires picking a TLS implementation, so give a better
     // warning if the user tries to request an 'https' URL.
     let url = config.webhook.url.parse::<hyper::Uri>().unwrap();
@@ -74,19 +72,15 @@ pub mod service {
 
     let client = Client::new();
 
-    let mut res = client.get(url).await?;
+    let req = Request::builder()
+      .method("POST")
+      .uri(url)
+      .body(Body::from("rustacean!"))
+      .expect("request builder");
+
+    let res = client.request(req).await?;
 
     println!("Response: {}", res.status());
-    println!("Headers: {:#?}\n", res.headers());
-
-    // Stream the body, writing each chunk to stdout as we get it
-    // (instead of buffering and printing at the end).
-    while let Some(next) = res.data().await {
-        let chunk = next?;
-        io::stdout().write_all(&chunk).await?;
-    }
-
-    println!("\n\nDone!");
 
     Ok(())
   }
