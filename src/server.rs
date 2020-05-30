@@ -4,6 +4,9 @@ pub mod service {
   pub use crate::config::conf;
 
   use std::net::ToSocketAddrs;
+  use std::convert::Infallible;
+  use hyper::{body::HttpBody as _, Client};
+  use tokio::io::{self, AsyncWriteExt as _};
 
   #[derive(Debug)]
   struct NotUtf8;
@@ -31,14 +34,7 @@ pub mod service {
         }),
       )
       .and(users.clone())
-      .map(|body, c| {
-        // forward to automate
-
-        let r = model::Report::from_str(body);
-        send_notification(r, c);
-
-        Ok("ok")
-      });
+      .and_then(report_processor);
 
     let mut addr_itr = address.to_socket_addrs()
       .expect("host and port were not correct");
@@ -52,11 +48,46 @@ pub mod service {
     }
   }
 
-  fn send_notification(report: model::Report, config: std::sync::Arc<conf::Config>) {
-    if report.has_notification_to_send() {
-      if config.webhook.url != "" {
+  async fn report_processor(body: String, config: std::sync::Arc<conf::Config>) -> Result<impl warp::Reply, Infallible>{
+      // forward to automate
+
+      let report = model::Report::from_str(body);
+      if report.has_notification_to_send() && config.webhook.url != "" {
         println!("send message to {}", config.webhook.url);
+        return match send(config).await {
+          Ok(()) => Ok("ok"),
+          Err(_) => Ok("error sending notification"),
+        }
       }
+      Ok("no notification sent")
+  }
+
+  async fn send(config: std::sync::Arc<conf::Config>) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+
+    // HTTPS requires picking a TLS implementation, so give a better
+    // warning if the user tries to request an 'https' URL.
+    let url = config.webhook.url.parse::<hyper::Uri>().unwrap();
+    if url.scheme_str() != Some("http") {
+        println!("This example only works with 'http' URLs.");
+        return Ok(());
     }
+
+    let client = Client::new();
+
+    let mut res = client.get(url).await?;
+
+    println!("Response: {}", res.status());
+    println!("Headers: {:#?}\n", res.headers());
+
+    // Stream the body, writing each chunk to stdout as we get it
+    // (instead of buffering and printing at the end).
+    while let Some(next) = res.data().await {
+        let chunk = next?;
+        io::stdout().write_all(&chunk).await?;
+    }
+
+    println!("\n\nDone!");
+
+    Ok(())
   }
 }

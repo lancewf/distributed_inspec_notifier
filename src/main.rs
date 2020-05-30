@@ -4,6 +4,7 @@ mod config;
 mod model;
 pub use crate::server::service;
 pub use crate::config::conf;
+extern crate hyper;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
