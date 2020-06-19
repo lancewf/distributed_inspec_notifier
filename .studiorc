@@ -4,27 +4,24 @@
 hab pkg install chef/studio-common >/dev/null
 source "$(hab pkg path chef/studio-common)/bin/studio-common"
 
-# This removes the visual mode when select text with the mouse in vim.
-echo "set mouse-=a" >> ~/.vimrc
-
 install_if_missing core/curl curl
+eval "$(curl -s -L https://gist.githubusercontent.com/lancewf/3117853c8c5a04c7b01bac737887a30c/raw/de1f49b0c03f0453d8b7ce0091339d63278f7cff/hab_helpers.sh)"
+source <(curl -s https://gist.githubusercontent.com/lancewf/3117853c8c5a04c7b01bac737887a30c/raw/de1f49b0c03f0453d8b7ce0091339d63278f7cff/hab_helpers.sh)
+eval "$(curl -s -L https://gist.githubusercontent.com/lancewf/584ca17c7b50cfc859e7cf544c1a67e8/raw/5efe2206e31849b1d64295b9176e5db4dd6b0df0/hab_service_helper.sh)"
+source <(curl -s https://gist.githubusercontent.com/lancewf/584ca17c7b50cfc859e7cf544c1a67e8/raw/5efe2206e31849b1d64295b9176e5db4dd6b0df0/hab_service_helper.sh)
 
 export SERVICE_NAME="distributed_inspec_notifier"
 export PORT=8080
 
-function start() {
-  build
+echo "Run 'start' to start the service"
 
-  create_config
+alias rebuild="build_load"
 
-  hab svc load $HAB_ORIGIN/$SERVICE_NAME
-}
-
-function rebuild() {
-  build
-  hab svc unload $HAB_ORIGIN/$SERVICE_NAME
-  sleep 3
-  hab svc load $HAB_ORIGIN/$SERVICE_NAME
+# Override to allow the start function to work. 
+function create_config() {
+  mkdir -p /hab/user/distributed_inspec_notifier/config/
+  printf "[service]\n host = \"localhost\"\n port = \"$PORT\"\n\n" > /hab/user/distributed_inspec_notifier/config/user.toml
+  printf "[webhook]\n url = \"http://requestbin.sjcmmsn.com/1nypmdf1\"\n" >> /hab/user/distributed_inspec_notifier/config/user.toml
 }
 
 function send_report() {
@@ -52,12 +49,12 @@ function send_failure_example() {
   send_report "/src/examples/compliance-failure-big-report.json"
 }
 
-document "rbuild" <<DOC
+document "rust_build" <<DOC
   Builds and reloads the binary from the '/src/target/debug' directory.
 
   This is faster than the "rebuild" command, but does not update any habitat changes
 DOC
-function rbuild() {
+function rust_build() {
   hab svc unload $HAB_ORIGIN/$SERVICE_NAME
   sleep 1
 
@@ -70,47 +67,11 @@ function rbuild() {
 
   LD_LIBRARY_PATH="$(hab pkg path core/gcc-libs)/lib/" cargo build
 
+  if [ $? -ne 0 ]; then
+    return 1
+  fi
+
   cp /src/target/debug/$SERVICE_NAME $(hab pkg path $HAB_ORIGIN/$SERVICE_NAME)/bin/
 
   hab svc load $HAB_ORIGIN/$SERVICE_NAME
 }
-
-document "kill_running_service" <<DOC
-  This kills the running service. Where hab sup should restart. 
-DOC
-function kill_running_service() {
-  install_if_missing core/busybox-static pgrep >/dev/null
-  SERVICE_PID=$(pgrep $SERVICE_NAME)
-  if [[ -n ${SERVICE_PID} ]]; then
-    kill $SERVICE_PID
-  fi
-}
-
-function create_config() {
-  mkdir -p /hab/user/distributed_inspec_notifier/config/
-  printf "[service]\n host = \"localhost\"\n port = \"$PORT\"\n\n" > /hab/user/distributed_inspec_notifier/config/user.toml
-  printf "[webhook]\n url = \"http://requestbin.sjcmmsn.com/1nypmdf1\"\n" >> /hab/user/distributed_inspec_notifier/config/user.toml
-}
-
-function status() {
-  hab sup status;
-}
-
-# Saves the in memory bash history to a file
-function save_history() {
-  history -a /src/.bash_history
-}
-
-# if .studiorc is being sourced from an already running studio, don't reset bash
-# history -- this is achieved by saving the current history before it is re-read
-save_history
-
-# Load the bash history from a file
-history -r /src/.bash_history
-
-function cleanup() {
-    save_history
-}
-
-# When exiting the studio save the bash history to a file
-trap cleanup EXIT
