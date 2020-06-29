@@ -53,7 +53,8 @@ pub mod service {
       if report.has_notification_to_send() {
         if config.webhook.url != "" {
           println!("sending webhook message to {}", config.webhook.url);
-          match send(&config.webhook.url).await {
+
+          match send(&config.webhook.url, report.webhook_message()).await {
             Ok(()) => (),
             Err(_) => return Ok("error sending webhook notification"),
           }
@@ -61,7 +62,7 @@ pub mod service {
 
         if config.slack_webhook.url != "" {
           println!("sending slack message to {}", config.slack_webhook.url);
-          match send(&config.slack_webhook.url).await {
+          match send(&config.slack_webhook.url, report.slack_message()).await {
             Ok(()) => (),
             Err(_) => return Ok("error sending slack notification"),
           }
@@ -70,7 +71,9 @@ pub mod service {
       Ok("success")
   }
 
-  async fn send(url: &String) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+
+
+  async fn send(url: &String, body: String) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // HTTPS requires picking a TLS implementation, so give a better
     // warning if the user tries to request an 'https' URL.
     let url = url.parse::<hyper::Uri>().unwrap();
@@ -85,7 +88,7 @@ pub mod service {
       .method("POST")
       .uri(url)
       .header("Content-Type", "application/json")
-      .body(Body::from("Failed tests"))
+      .body(Body::from(body))
       .expect("request builder");
 
     let res = client.request(req).await?;
