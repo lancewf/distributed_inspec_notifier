@@ -21,7 +21,7 @@ alias rebuild="build_load"
 function create_config() {
   mkdir -p /hab/user/distributed_inspec_notifier/config/
   printf "[service]\n host = \"localhost\"\n port = \"$PORT\"\n\n" > /hab/user/distributed_inspec_notifier/config/user.toml
-  printf "[webhook]\n url = \"http://requestbin.sjcmmsn.com/1nypmdf1\"\n" >> /hab/user/distributed_inspec_notifier/config/user.toml
+  printf "[webhook]\n url = \"http://requestbin.sjcmmsn.com/1f7c85o1\"\n" >> /hab/user/distributed_inspec_notifier/config/user.toml
 }
 
 function send_report() {

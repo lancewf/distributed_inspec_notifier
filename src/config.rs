@@ -7,6 +7,7 @@ pub mod conf {
   pub struct Config {
     pub service: Service,
     pub webhook: Webhook,
+    pub slack_webhook: SlackWebhook,
   }
 
   #[derive(Deserialize)]
@@ -17,6 +18,11 @@ pub mod conf {
 
   #[derive(Deserialize)]
   pub struct Webhook {
+    pub url: String,
+  }
+
+  #[derive(Deserialize)]
+  pub struct SlackWebhook {
     pub url: String,
   }
 

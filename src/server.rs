@@ -47,24 +47,33 @@ pub mod service {
     }
   }
 
-  async fn report_processor(body: String, config: std::sync::Arc<conf::Config>) -> Result<impl warp::Reply, Infallible>{
-      // forward to automate
-
+  async fn report_processor(body: String, 
+    config: std::sync::Arc<conf::Config>) -> Result<impl warp::Reply, Infallible>{
       let report = model::Report::from_str(body);
-      if report.has_notification_to_send() && config.webhook.url != "" {
-        println!("sending message to {}", config.webhook.url);
-        return match send(config).await {
-          Ok(()) => Ok("ok"),
-          Err(_) => Ok("error sending notification"),
+      if report.has_notification_to_send() {
+        if config.webhook.url != "" {
+          println!("sending webhook message to {}", config.webhook.url);
+          match send(&config.webhook.url).await {
+            Ok(()) => (),
+            Err(_) => return Ok("error sending webhook notification"),
+          }
+        }
+
+        if config.slack_webhook.url != "" {
+          println!("sending slack message to {}", config.slack_webhook.url);
+          match send(&config.slack_webhook.url).await {
+            Ok(()) => (),
+            Err(_) => return Ok("error sending slack notification"),
+          }
         }
       }
-      Ok("no notification sent")
+      Ok("success")
   }
 
-  async fn send(config: std::sync::Arc<conf::Config>) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+  async fn send(url: &String) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // HTTPS requires picking a TLS implementation, so give a better
     // warning if the user tries to request an 'https' URL.
-    let url = config.webhook.url.parse::<hyper::Uri>().unwrap();
+    let url = url.parse::<hyper::Uri>().unwrap();
     if url.scheme_str() != Some("http") {
         println!("This example only works with 'http' URLs.");
         return Ok(());
@@ -75,7 +84,8 @@ pub mod service {
     let req = Request::builder()
       .method("POST")
       .uri(url)
-      .body(Body::from("rustacean!"))
+      .header("Content-Type", "application/json")
+      .body(Body::from("Failed tests"))
       .expect("request builder");
 
     let res = client.request(req).await?;
